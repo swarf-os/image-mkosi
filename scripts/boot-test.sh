@@ -33,6 +33,10 @@ if grep -E 'CI-(OSREL|ISSUE|BOOT-TITLE): ' "$log" | grep -v '^.*CI-OSREL: ID_LIK
 fi
 grep -q 'CI-BOOT-TITLE: .*swarf' "$log" || errors+=("boot entry title does not name swarf")
 
+# Boot messages (initrd and system) must greet with our name only.
+if grep -E 'Welcome to ' "$log" | grep -qv 'swarf'; then
+    errors+=("boot greets with another name: $(grep -E 'Welcome to ' "$log" | grep -v swarf | head -1)")
+fi
 grep -q 'CI-HOSTNAME: swarf' "$log" || errors+=("hostname is not swarf: $(sed -n 's/^.*CI-HOSTNAME: //p' "$log" | head -1)")
 grep -q 'CI-MOUNT: /usr .*erofs' "$log" || errors+=("/usr is not the EROFS partition")
 grep -q 'CI-GETTY: active' "$log"     || errors+=("getty.target not active (no console login prompt)")

@@ -1,0 +1,22 @@
+#!/bin/bash
+# The default initrd is built from Arch packages and would say "Arch Linux"
+# and set the hostname "archlinux", which then stays after switch-root
+# (systemd keeps an already set hostname when /etc/hostname is missing).
+set -euo pipefail
+
+version="${IMAGE_VERSION:-}"
+osr="$BUILDROOT/usr/lib/os-release"
+rm -f "$osr"
+cat >"$osr" <<OSR
+NAME="swarf"
+PRETTY_NAME="swarf ${version} (initrd)"
+ID=swarf
+ID_LIKE=arch
+VERSION_ID="${version}"
+DEFAULT_HOSTNAME=swarf
+OSR
+
+# /etc/initrd-release is what the initrd's systemd reads; keep it pointing at ours.
+if [[ -e "$BUILDROOT/etc/initrd-release" && ! -L "$BUILDROOT/etc/initrd-release" ]]; then
+    cp "$osr" "$BUILDROOT/etc/initrd-release"
+fi
