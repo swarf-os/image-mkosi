@@ -1,0 +1,7 @@
+#!/bin/sh
+# Set the kernel hostname to DEFAULT_HOSTNAME from os-release.
+# Run only when /etc/hostname does not exist (see swarf-default-hostname.service).
+set -eu
+. /usr/lib/os-release
+[ -n "${DEFAULT_HOSTNAME:-}" ] || exit 0
+printf '%s' "$DEFAULT_HOSTNAME" > /proc/sys/kernel/hostname
