@@ -1,8 +1,9 @@
 #!/bin/bash
 # Build the image. Full log in logs/build.log; prints OK or the useful errors.
 #
-# Packages and repository metadata are kept in mkosi.pkgcache/ (picked up by
-# mkosi automatically), the tools tree in mkosi.tools/. The CI keeps both
+# Packages are kept in mkosi.pkgcache/ (picked up by mkosi automatically),
+# repository metadata in mkosi.cache/*.metadata.cache (CacheDirectory=), the
+# tools tree in mkosi.tools/. The CI keeps both
 # between runs. Our packages come from a fixed Arch Linux Archive date, so
 # cached metadata never goes stale: once it exists, later tries skip the
 # metadata sync (--cache-only=metadata), which is what the archive keeps
@@ -18,13 +19,13 @@ build() { mkosi "$@" --force build >>"$log" 2>&1; }
 ok=0
 for try in 1 2 3; do
     args=()
-    if [[ $try -gt 1 || -n "$(ls -A mkosi.pkgcache 2>/dev/null)" ]]; then
+    if compgen -G 'mkosi.cache/*.metadata.cache' >/dev/null; then
         args=(--cache-only=metadata)
     fi
     echo "try $try: mkosi ${args[*]} build" >>"$log"
     if build "${args[@]}"; then ok=1; break; fi
     # Cached metadata missing or incomplete: let the next try sync it.
-    if tail -n 30 "$log" | grep -q 'failed retrieving file\|failed to synchronize\|not found in sync db\|could not find database'; then
+    if tail -n 30 "$log" | grep -q 'failed retrieving file\|failed to synchronize'; then
         sleep 30
         continue
     fi
