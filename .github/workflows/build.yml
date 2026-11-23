@@ -21,6 +21,15 @@ jobs:
       # runner user and allows unprivileged user namespaces: no sudo in our build.
       - uses: systemd/mkosi@ecf7f5702bb2052b7a69cab3fe7d37bc3b9ad77b
 
+      # The Arch Linux Archive is a single volunteer host and is sometimes slow.
+      # Keep downloaded packages between runs; the key follows the snapshot date.
+      - name: Package cache
+        uses: actions/cache@v4
+        with:
+          path: mkosi.cache
+          key: mkosi-cache-${{ hashFiles('mkosi.conf') }}
+          restore-keys: mkosi-cache-
+
       - name: Build
         run: scripts/build.sh
 
