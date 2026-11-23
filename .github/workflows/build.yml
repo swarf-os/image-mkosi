@@ -26,6 +26,13 @@ jobs:
 
       - name: Boot test (qemu + KVM)
         run: scripts/boot-test.sh
+        env:
+          BOOT_TIMEOUT: "300"
+
+      - name: Show the end of the logs on failure
+        if: failure()
+        run: |
+          for f in logs/*.log; do echo "::group::$f"; tail -n 200 "$f"; echo "::endgroup::"; done
 
       - name: Upload logs and manifest
         if: always()
