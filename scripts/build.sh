@@ -3,7 +3,7 @@
 #
 # Packages are kept in mkosi.pkgcache/ (picked up by mkosi automatically),
 # repository metadata in mkosi.cache/*.metadata.cache (CacheDirectory=), the
-# tools tree in mkosi.tools/. The CI keeps both
+# tools tree in mkosi.tools/. The CI keeps the first two
 # between runs. Our packages come from a fixed Arch Linux Archive date, so
 # cached metadata never goes stale: once it exists, later tries skip the
 # metadata sync (--cache-only=metadata), which is what the archive keeps

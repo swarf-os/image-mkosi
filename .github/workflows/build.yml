@@ -22,7 +22,9 @@ jobs:
       - uses: systemd/mkosi@ecf7f5702bb2052b7a69cab3fe7d37bc3b9ad77b
 
       # The Arch Linux Archive is a single volunteer host and is sometimes slow.
-      # Keep downloaded packages between runs. Restore and save are separate so
+      # Keep downloaded packages and repository metadata between runs (not the
+      # tools tree: some of its files are unreadable to the runner user, so
+      # tar fails and nothing is saved). Restore and save are separate so
       # the cache is saved even when a later step fails.
       - name: Restore package cache
         uses: actions/cache/restore@v4
@@ -30,7 +32,6 @@ jobs:
           path: |
             mkosi.cache
             mkosi.pkgcache
-            mkosi.tools
           key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
           restore-keys: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-
 
@@ -44,7 +45,6 @@ jobs:
           path: |
             mkosi.cache
             mkosi.pkgcache
-            mkosi.tools
           key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
 
       - name: Boot test (qemu + KVM)
