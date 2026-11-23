@@ -9,7 +9,7 @@ CASE is one of:
   uki-modified    UKI command line changed from usr=signed to usr=verity
   uki-other-key   UKI signature replaced by one made with another key
   usr-modified    one byte of /usr changed (the EROFS superblock)
-  usr-other-key   /usr verity root hash signed again with another key
+  usr-other-key   /usr changed, its hash tree rebuilt and signed by another key
 
 Runs inside `mkosi box` (tools tree: mtools, sbsigntools, openssl). The other
 key is created in WORKDIR the first time it is needed.
@@ -18,7 +18,6 @@ key is created in WORKDIR the first time it is needed.
 import base64
 import hashlib
 import json
-import shutil
 import struct
 import subprocess
 import sys
@@ -53,7 +52,13 @@ def partitions(image: Path) -> list[dict]:
         first, last = struct.unpack_from("<QQ", e, 32)
         name = e[56:128].decode("utf-16-le").rstrip("\0")
         parts.append(
-            {"type": ptype, "name": name, "offset": first * SECTOR, "size": (last - first + 1) * SECTOR}
+            {
+                "number": i + 1,
+                "type": ptype,
+                "name": name,
+                "offset": first * SECTOR,
+                "size": (last - first + 1) * SECTOR,
+            }
         )
     return parts
 
@@ -63,6 +68,7 @@ def find(parts: list[dict], kind: str) -> dict:
     match = {
         "esp": lambda p: p["type"] == ESP_TYPE,
         "usr": lambda p: p["name"].startswith("swarf_") and "_verity" not in p["name"],
+        "verity": lambda p: p["name"].startswith("swarf_") and p["name"].endswith("_verity"),
         "sig": lambda p: p["name"].startswith("swarf_") and p["name"].endswith("_verity_sig"),
     }[kind]
     hits = [p for p in parts if match(p)]
@@ -132,13 +138,31 @@ def usr_case(case: str, image: Path, work: Path) -> str:
         patch(image, usr["offset"] + 1024 + 8, b"\xff")
         return f"{usr['name']}: one byte of the EROFS superblock changed"
 
-    sig = find(parts, "sig")
+    # usr-other-key: a whole /usr made and signed by someone else, as a
+    # careful attacker would: change the data, rebuild the verity hash tree,
+    # sign the new root hash with another key, and give the partitions the
+    # UUIDs that systemd derives from that root hash. Only our signed UKI,
+    # which carries our usrhash=, stands in the way.
+    usr, verity, sig = find(parts, "usr"), find(parts, "verity"), find(parts, "sig")
+    last = usr["offset"] + usr["size"] - 1  # padding at the end of /usr: EROFS still mounts
     with image.open("rb") as f:
-        f.seek(sig["offset"])
-        raw = f.read(sig["size"])
-    old = json.loads(raw.rstrip(b"\0"))
+        f.seek(last)
+        byte = f.read(1)
+    patch(image, last, bytes([byte[0] ^ 0xFF]))
+
+    data, tree = work / "usr.img", work / "verity.img"
+    for part, path in ((usr, data), (verity, tree)):
+        with image.open("rb") as f, path.open("wb") as out:
+            f.seek(part["offset"])
+            out.write(f.read(part["size"]))
+    out = run(
+        "veritysetup", "format", "--hash=sha256", "--data-block-size=4096", "--hash-block-size=4096",
+        str(data), str(tree), capture_output=True, text=True,
+    ).stdout  # fmt: skip
+    roothash = next(line.split(":", 1)[1].strip() for line in out.splitlines() if line.startswith("Root hash:"))
+    patch(image, verity["offset"], tree.read_bytes())
+
     key, crt = other_key(work)
-    roothash = old["rootHash"]
     # systemd-repart signs the root hash as a hex string: PKCS#7, detached,
     # no attributes, binary (src/repart/repart.c, v258).
     signed = run(
@@ -156,7 +180,12 @@ def usr_case(case: str, image: Path, work: Path) -> str:
     if len(text) + 1 > sig["size"]:
         sys.exit("ERROR: new signature does not fit in the partition")
     patch(image, sig["offset"], text + b"\0" * (sig["size"] - len(text)))
-    return f"{sig['name']}: root hash signed again by another key"
+
+    # Partition UUIDs: first and second half of the root hash (systemd-repart).
+    for part, half in ((usr, roothash[:32]), (verity, roothash[32:64])):
+        run("sfdisk", "--quiet", "--part-uuid", str(image), str(part["number"]), str(uuid.UUID(half)),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # fmt: skip
+    return f"/usr changed, hash tree rebuilt, root hash {roothash[:12]}… signed by another key, UUIDs updated"
 
 
 def main() -> None:

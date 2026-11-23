@@ -28,8 +28,15 @@ run.
 - `scripts/boot-test.sh`: our keys are enrolled at first boot, then the image
   boots with Secure Boot enabled, to a console, with our identity only.
 - `scripts/secureboot-test.sh`: a changed UKI, a UKI signed by another key, a
-  changed `/usr` and a `/usr` signature made by another key must not boot;
-  an unchanged copy made the same way must.
+  changed `/usr`, and a whole `/usr` rebuilt and signed by another key (new
+  hash tree, signature and partition UUIDs) must not boot; an unchanged copy
+  made the same way must.
+
+The UKI command line carries `usrhash=` (added by mkosi), so the signed UKI
+pins the exact `/usr` it boots. Swapping only the signature partition for one
+made by another key over the same root hash changes nothing and still boots;
+the signature partition matters where no UKI pins the hash (sysupdate,
+`systemd-dissect`).
 
 ## License
 
