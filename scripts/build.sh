@@ -10,9 +10,19 @@
 # timing out on.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-mkdir -p logs mkosi.pkgcache
+mkdir -p logs mkosi.pkgcache mkosi.cache
 log=logs/build.log
 : >"$log"
+
+# Cached metadata is only valid for the Archive date it was synced from (its
+# mkosi cache key, &d~&r~&a~&I, does not include the date): drop it when the
+# date changed or is unknown. The CI cache key follows the date, not mkosi.conf.
+snapshot="$(sed -n 's/^Snapshot=//p' mkosi.conf)"
+stamp=mkosi.cache/swarf-snapshot
+if [[ "$(cat "$stamp" 2>/dev/null)" != "$snapshot" ]]; then
+    rm -rf mkosi.cache/*.metadata.cache
+fi
+echo "$snapshot" >"$stamp"
 
 build() { mkosi "$@" --force build >>"$log" 2>&1; }
 
