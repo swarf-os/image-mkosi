@@ -1,0 +1,6 @@
+#!/bin/bash
+# Keep the whole build-time /etc as the factory copy, so tmpfiles can link
+# parts of it back into the empty /etc created at first boot.
+set -euo pipefail
+mkdir -p "$BUILDROOT/usr/share/factory"
+cp --archive --no-target-directory --update=none "$BUILDROOT/etc" "$BUILDROOT/usr/share/factory/etc"

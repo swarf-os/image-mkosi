@@ -1,0 +1,31 @@
+#!/bin/bash
+# Our own identity: os-release and issue name only swarf (SPEC II-1, criterion 6).
+set -euo pipefail
+
+version="${IMAGE_VERSION:?}"
+
+cat >/usr/lib/os-release <<OSR
+NAME="swarf"
+PRETTY_NAME="swarf ${version}"
+ID=swarf
+ID_LIKE=arch
+VERSION="${version}"
+VERSION_ID="${version}"
+IMAGE_ID=swarf
+IMAGE_VERSION="${version}"
+DEFAULT_HOSTNAME=swarf
+HOME_URL="https://github.com/swarf-os/image-mkosi"
+BUG_REPORT_URL="https://github.com/swarf-os/image-mkosi/issues"
+OSR
+
+# /etc/issue: Arch's prints \S{PRETTY_NAME}, i.e. our name from os-release.
+
+# Arch ships these; they would name Arch on the installed system.
+rm -f /etc/arch-release
+
+# The pacman database would be lost with /var (only /usr ships). Keep it in /usr
+# so the image's package list stays inspectable on the machine.
+if [[ -d /var/lib/pacman/local ]]; then
+    mkdir -p /usr/lib/pacman
+    mv /var/lib/pacman/local /usr/lib/pacman/local
+fi

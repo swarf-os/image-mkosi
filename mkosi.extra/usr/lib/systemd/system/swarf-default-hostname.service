@@ -1,0 +1,16 @@
+# The initrd (built from Arch packages) sets the hostname "archlinux", and
+# systemd keeps an already set hostname after switch-root when /etc/hostname
+# is missing (hostname_setup() in src/shared/hostname-setup.c, v262).
+# Apply DEFAULT_HOSTNAME from our os-release in that case.
+[Unit]
+Description=Apply the default hostname when none is configured
+DefaultDependencies=no
+ConditionPathExists=!/etc/hostname
+ConditionPathExists=!/etc/initrd-release
+After=systemd-remount-fs.service
+Before=sysinit.target systemd-hostnamed.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/swarf/apply-default-hostname

@@ -1,0 +1,7 @@
+mkosi.output/
+mkosi.cache/
+mkosi.tools/
+mkosi.key
+mkosi.crt
+logs/
+mkosi.pkgcache/
