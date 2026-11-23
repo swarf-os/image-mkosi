@@ -1,0 +1,39 @@
+name: archive-probe
+# Diagnostic only: how archive.archlinux.org behaves from GitHub runners.
+on:
+  push:
+    branches: [ci/archive-probe]
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    env:
+      BASE: https://archive.archlinux.org/repos/2026/11/09/core/os/x86_64
+    steps:
+      - name: DNS, IPv4, IPv6, headers
+        run: |
+          getent ahosts archive.archlinux.org || true
+          curl -s -o /dev/null -4 -m 30 -w 'ipv4 connect=%{time_connect}s tls=%{time_appconnect}s total=%{time_total}s code=%{http_code} ip=%{remote_ip}\n' https://archive.archlinux.org/ || echo "ipv4 failed"
+          curl -s -o /dev/null -6 -m 15 -w 'ipv6 connect=%{time_connect}s total=%{time_total}s code=%{http_code}\n' https://archive.archlinux.org/ || echo "ipv6 unavailable"
+          curl -sI -m 30 "$BASE/core.db" | grep -i -E '^(HTTP|server|location|retry-after|x-|via|cf-)' || true
+
+      - name: Ten sequential small requests
+        run: |
+          for i in $(seq 1 10); do
+            curl -s -o /dev/null -m 30 -w "seq $i code=%{http_code} total=%{time_total}s\n" "$BASE/core.db.sig" || echo "seq $i failed"
+          done
+
+      - name: One large file alone, then five in parallel
+        run: |
+          curl -s -m 60 "$BASE/" > index.html || echo "index failed"
+          pick() { grep -o "\"$1-[0-9][^\"]*x86_64\.pkg\.tar\.zst\"" index.html | head -1 | tr -d '"'; }
+          f=$(pick linux-firmware-intel); echo "large=$f"
+          [ -n "$f" ] && curl -s -o /dev/null -m 180 -w "alone: code=%{http_code} size=%{size_download} speed=%{speed_download}B/s total=%{time_total}s\n" "$BASE/$f" || echo "alone failed"
+          for p in glibc gcc-libs systemd openssl util-linux; do
+            f=$(pick "$p")
+            ( curl -s -o /dev/null -m 180 -w "parallel $p: code=%{http_code} size=%{size_download} speed=%{speed_download}B/s total=%{time_total}s\n" "$BASE/$f" || echo "parallel $p failed" ) &
+          done
+          wait
+
+      - name: Live mirror for comparison
+        run: |
+          curl -s -o /dev/null -m 60 -w 'live mirror core.db: code=%{http_code} speed=%{speed_download}B/s total=%{time_total}s\n' https://fastly.mirror.pkgbuild.com/core/os/x86_64/core.db || echo "live mirror failed"
