@@ -1,0 +1,33 @@
+name: kvm-check
+
+on:
+  push:
+    branches: [ci/kvm-check]
+
+jobs:
+  kvm:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: CPU and device info
+        run: |
+          nproc
+          grep -m1 'model name' /proc/cpuinfo
+          grep -c -E 'vmx|svm' /proc/cpuinfo || echo "no vmx/svm flag"
+          ls -l /dev/kvm || echo "no /dev/kvm"
+          id
+      - name: Open /dev/kvm before udev rule (KVM_GET_API_VERSION)
+        continue-on-error: true
+        run: |
+          python3 -c "import fcntl,os; fd=os.open('/dev/kvm',os.O_RDWR); print('API version', fcntl.ioctl(fd,0xAE00))"
+      - name: Apply udev rule from GitHub changelog 2024-04-02
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+      - name: Open /dev/kvm as runner user after udev rule
+        run: |
+          python3 -c "import fcntl,os; fd=os.open('/dev/kvm',os.O_RDWR); print('API version', fcntl.ioctl(fd,0xAE00))"
