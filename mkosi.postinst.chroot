@@ -18,11 +18,7 @@ HOME_URL="https://github.com/swarf-os/image-mkosi"
 BUG_REPORT_URL="https://github.com/swarf-os/image-mkosi/issues"
 OSR
 
-cat >/etc/issue <<'ISSUE'
-swarf \r (\l)
-
-ISSUE
-cp /etc/issue /usr/lib/issue
+# /etc/issue: Arch's prints \S{PRETTY_NAME}, i.e. our name from os-release.
 
 # Arch ships these; they would name Arch on the installed system.
 rm -f /etc/arch-release

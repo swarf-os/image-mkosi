@@ -12,7 +12,7 @@ timeout --foreground "$timeout_s" \
     mkosi --credential="$PWD/tests/credentials" --console=read-only vm >"$log" 2>&1 </dev/null
 rc=$?
 # Strip terminal control sequences so the checks below see plain text.
-sed -i -e 's/\x1b\[[0-9;?:]*[A-Za-z]//g' -e 's/\r$//' "$log"
+sed -i -e 's/\x1b\[[0-9;?:]*[A-Za-z]//g' -e 's/\r//g' "$log"
 
 errors=()
 [[ $rc -eq 124 ]] && errors+=("VM did not power off within ${timeout_s}s")
@@ -23,7 +23,8 @@ field() { sed -n "s/^.*CI-OSREL: $1=//p" "$log" | head -1 | tr -d '"'; }
 [[ "$(field NAME)" == swarf ]]        || errors+=("os-release NAME is '$(field NAME)', expected swarf")
 [[ "$(field PRETTY_NAME)" == swarf* ]] || errors+=("os-release PRETTY_NAME is '$(field PRETTY_NAME)'")
 
-grep -q 'CI-ISSUE: swarf' "$log" || errors+=("/etc/issue does not name swarf")
+# /etc/issue may name swarf or print PRETTY_NAME from os-release (\S{PRETTY_NAME}).
+grep -q -E 'CI-ISSUE: (swarf|\\S\{PRETTY_NAME\})' "$log" || errors+=("/etc/issue names neither swarf nor PRETTY_NAME")
 grep -q 'CI-BOOT-TITLE: ' "$log" || errors+=("no boot entry title found")
 
 # Criterion 6: only our name in os-release, issue and boot entries.
