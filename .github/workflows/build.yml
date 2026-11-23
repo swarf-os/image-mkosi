@@ -27,9 +27,11 @@ jobs:
       - name: Restore package cache
         uses: actions/cache/restore@v4
         with:
-          path: mkosi.cache
-          key: mkosi-cache-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
-          restore-keys: mkosi-cache-${{ hashFiles('mkosi.conf') }}-
+          path: |
+            mkosi.pkgcache
+            mkosi.tools
+          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
+          restore-keys: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-
 
       - name: Build
         run: scripts/build.sh
@@ -38,8 +40,10 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: mkosi.cache
-          key: mkosi-cache-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
+          path: |
+            mkosi.pkgcache
+            mkosi.tools
+          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
 
       - name: Boot test (qemu + KVM)
         run: scripts/boot-test.sh

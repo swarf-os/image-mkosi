@@ -4,3 +4,4 @@ mkosi.tools/
 mkosi.key
 mkosi.crt
 logs/
+mkosi.pkgcache/
