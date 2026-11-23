@@ -32,7 +32,7 @@ jobs:
           path: |
             mkosi.cache
             mkosi.pkgcache
-          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
+          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-
 
       - name: Build
@@ -45,7 +45,7 @@ jobs:
           path: |
             mkosi.cache
             mkosi.pkgcache
-          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}
+          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Boot test (qemu + KVM)
         run: scripts/boot-test.sh
