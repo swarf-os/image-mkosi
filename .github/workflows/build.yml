@@ -21,6 +21,15 @@ jobs:
       # runner user and allows unprivileged user namespaces: no sudo in our build.
       - uses: systemd/mkosi@ecf7f5702bb2052b7a69cab3fe7d37bc3b9ad77b
 
+      - name: Probe Arch Linux Archive hosts (diagnostic)
+        continue-on-error: true
+        run: |
+          snap=$(sed -n 's/^Snapshot=//p' mkosi.conf)
+          for h in archive.archlinux.org america.archive.pkgbuild.com europe.archive.pkgbuild.com asia.archive.pkgbuild.com; do
+            printf '%s ' "$h"
+            curl -s -o /dev/null -m 30 -w '%{http_code} %{time_total}s %{size_download}B\n' "https://$h/repos/$snap/core/os/x86_64/core.db" || echo unreachable
+          done
+
       # The Arch Linux Archive is a single volunteer host and is sometimes slow.
       # Keep downloaded packages between runs; the key follows the snapshot date.
       - name: Package cache
