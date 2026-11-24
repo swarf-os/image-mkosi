@@ -66,6 +66,9 @@ State of `swarf-os/image-mkosi`, kept by each step session (SPEC rule 9).
 
 ## Left (from SPEC section 12)
 
+- Minor CI defect, to fix in the next pull request: the step "Show the end
+  of the logs on failure" in `build.yml` fails when `logs/` is empty (the
+  glob has no `nullglob`). It hides nothing, but adds a second red step.
 - Steps 3 to 6 (base), then the base handover tag for pxOS (SPEC section 12).
 - Steps 7 to 13 (Plasma, swarf's settings, hardware and audio, daily CI,
   hosting and real updates, Packard Bell, merge into `swarf-os/image`).
