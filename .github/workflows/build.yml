@@ -26,14 +26,31 @@ jobs:
       # tools tree: some of its files are unreadable to the runner user, so
       # tar fails and nothing is saved). Restore and save are separate so
       # the cache is saved even when a later step fails.
+      # Cache by Arch Linux Archive date: editing mkosi.conf for anything else
+      # keeps the downloaded packages (scripts/build.sh drops stale metadata).
+      - name: Cache key
+        id: cache
+        run: echo "snapshot=$(sed -n 's|^Snapshot=||p' mkosi.conf | tr / -)" >>"$GITHUB_OUTPUT"
+
       - name: Restore package cache
         uses: actions/cache/restore@v4
         with:
           path: |
             mkosi.cache
             mkosi.pkgcache
-          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-
+          key: mkosi-pkg-${{ steps.cache.outputs.snapshot }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            mkosi-pkg-${{ steps.cache.outputs.snapshot }}-
+            mkosi-pkg-
+
+      # Throw-away keys for this test bench, in repository secrets (see
+      # scripts/signing-keys.sh); never written to the cache or the artifacts.
+      - name: Signing keys
+        run: scripts/signing-keys.sh
+        env:
+          SIGNING_KEY: ${{ secrets.SWARF_SIGNING_KEY }}
+          SIGNING_CERT: ${{ secrets.SWARF_SIGNING_CERT }}
+          ON_MAIN: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Build
         run: scripts/build.sh
@@ -45,12 +62,17 @@ jobs:
           path: |
             mkosi.cache
             mkosi.pkgcache
-          key: mkosi-pkg-${{ hashFiles('mkosi.conf') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: mkosi-pkg-${{ steps.cache.outputs.snapshot }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Boot test (qemu + KVM)
         run: scripts/boot-test.sh
         env:
           BOOT_TIMEOUT: "300"
+
+      - name: Secure Boot tests (tampered images must not boot)
+        run: scripts/secureboot-test.sh
+        env:
+          NEG_TIMEOUT: "180"
 
       - name: Show the end of the logs on failure
         if: failure()

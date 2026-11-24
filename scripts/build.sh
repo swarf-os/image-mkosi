@@ -10,14 +10,26 @@
 # timing out on.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-mkdir -p logs mkosi.pkgcache
+mkdir -p logs mkosi.pkgcache mkosi.cache
 log=logs/build.log
 : >"$log"
+
+# Cached metadata is only valid for the Archive date it was synced from (its
+# mkosi cache key, &d~&r~&a~&I, does not include the date): drop it when the
+# date changed or is unknown. The CI cache key follows the date, not mkosi.conf.
+snapshot="$(sed -n 's/^Snapshot=//p' mkosi.conf)"
+stamp=mkosi.cache/swarf-snapshot
+if [[ "$(cat "$stamp" 2>/dev/null)" != "$snapshot" ]]; then
+    rm -rf mkosi.cache/*.metadata.cache
+fi
+echo "$snapshot" >"$stamp"
 
 build() { mkosi "$@" --force build >>"$log" 2>&1; }
 
 ok=0
-for try in 1 2 3; do
+# The Archive goes down for minutes at a time: wait longer after each failure.
+delays=(60 120 240)
+for try in 1 2 3 4; do
     args=()
     if compgen -G 'mkosi.cache/*.metadata.cache' >/dev/null; then
         args=(--cache-only=metadata)
@@ -26,7 +38,10 @@ for try in 1 2 3; do
     if build "${args[@]}"; then ok=1; break; fi
     # Cached metadata missing or incomplete: let the next try sync it.
     if tail -n 30 "$log" | grep -q 'failed retrieving file\|failed to synchronize'; then
-        sleep 30
+        if ((try < 4)); then
+            echo "download failed, waiting ${delays[try-1]}s" >>"$log"
+            sleep "${delays[try-1]}"
+        fi
         continue
     fi
     break

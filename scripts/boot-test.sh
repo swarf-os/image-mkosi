@@ -1,6 +1,9 @@
 #!/bin/bash
 # Boot the built image in a VM (qemu, KVM) with the test-only credentials in
 # tests/credentials/, then check what the guest printed on its console.
+# The VM runs on a temporary copy (--ephemeral), so the image stays as built
+# for scripts/secureboot-test.sh. OVMF starts in Secure Boot setup mode:
+# systemd-boot enrolls our keys from the ESP, resets, then boots enforced.
 # Full log in logs/boot.log; prints OK or the useful errors.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -9,7 +12,7 @@ log=logs/boot.log
 timeout_s="${BOOT_TIMEOUT:-900}"
 
 timeout --foreground "$timeout_s" \
-    mkosi --credential="$PWD/tests/credentials" --console=read-only vm >"$log" 2>&1 </dev/null
+    mkosi --credential="$PWD/tests/credentials" --console=read-only --ephemeral=yes vm >"$log" 2>&1 </dev/null
 rc=$?
 # Strip terminal control sequences so the checks below see plain text.
 sed -i -e 's/\x1b\[[0-9;?:]*[A-Za-z]//g' -e 's/\r//g' "$log"
@@ -40,6 +43,9 @@ fi
 grep -q 'CI-HOSTNAME: swarf' "$log" || errors+=("hostname is not swarf: $(sed -n 's/^.*CI-HOSTNAME: //p' "$log" | head -1)")
 grep -q 'CI-MOUNT: /usr .*erofs' "$log" || errors+=("/usr is not the EROFS partition")
 grep -q 'CI-GETTY: active' "$log"     || errors+=("getty.target not active (no console login prompt)")
+# Step 2: our keys enrolled and enforced; /usr mounted under usr=signed.
+grep -q 'CI-SECUREBOOT: enabled' "$log" || errors+=("Secure Boot not enabled: $(sed -n 's/^.*CI-SECUREBOOT: //p' "$log" | head -1)")
+grep -q 'CI-VERITY-CERT: .*\.crt' "$log" || errors+=("no verity certificate in /usr/lib/verity.d")
 if grep -q 'CI-FAILED: ' "$log"; then
     errors+=("failed units: $(sed -n 's/^.*CI-FAILED: //p' "$log" | awk '{print $1}' | tr '\n' ' ')")
 fi
