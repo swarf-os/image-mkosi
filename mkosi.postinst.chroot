@@ -1,5 +1,5 @@
 #!/bin/bash
-# Our own identity: os-release and issue name only swarf (SPEC II-1, criterion 6).
+# Our own identity: os-release and issue name only swarf (SPEC section 2, criterion 6).
 set -euo pipefail
 
 version="${IMAGE_VERSION:?}"

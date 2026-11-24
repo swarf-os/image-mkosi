@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Pinned mkosi (SPEC II-3): v27.1. The action also opens /dev/kvm to the
+      # Pinned mkosi (SPEC section 4, D-9): v27.1. The action also opens /dev/kvm to the
       # runner user and allows unprivileged user namespaces: no sudo in our build.
       - uses: systemd/mkosi@ecf7f5702bb2052b7a69cab3fe7d37bc3b9ad77b
 

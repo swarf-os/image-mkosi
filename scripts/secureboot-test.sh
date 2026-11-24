@@ -1,6 +1,6 @@
 #!/bin/bash
-# Secure Boot and signed /usr: tampered images must not boot (SPEC II-10
-# test 3, II-11 criterion 5). Each case boots a modified copy of the built
+# Secure Boot and signed /usr: tampered images must not boot (SPEC section 11,
+# test 3 and criterion 5). Each case boots a modified copy of the built
 # image (scripts/tamper.py) in the same VM as scripts/boot-test.sh: OVMF with
 # Secure Boot in setup mode, so systemd-boot first enrolls our keys from the
 # ESP, then must refuse what was changed. uki-control goes through the same
