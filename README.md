@@ -5,7 +5,10 @@ ParticleOS model (A/B `/usr` updated by systemd-sysupdate, signed UKI, LUKS),
 Arch Linux packages, KDE Plasma. If it works out, it will be merged into
 `swarf-os/image`.
 
-Status: step 2 (signatures and Secure Boot). The console image boots in a VM
+The plan, decisions and open questions are in `SPEC.md`; the current state
+is in `docs/STATUS.md`; rules for agents in `AGENTS.md`.
+
+Status: step 2 (signatures and Secure Boot) done. The console image boots in a VM
 with Secure Boot enforced by our own keys, and `/usr` is refused unless its
 verity root hash carries our signature (`usr=signed`).
 

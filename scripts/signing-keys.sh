@@ -4,10 +4,10 @@
 #
 # From the repository secrets SWARF_SIGNING_KEY and SWARF_SIGNING_CERT when
 # they are set: throw-away keys made for this test bench with `mkosi genkey`,
-# replaced by the real keys when hosting is decided (SPEC II-7).
+# replaced by the real keys when hosting is decided (SPEC O-5).
 # Without them (a pull request from a fork, or before the secrets exist), a
 # key is made for this run only, so the signing path is still tested; a push
-# to main refuses that, since a key made per build proves nothing (SPEC II-6).
+# to main refuses that, since a key made per build proves nothing (SPEC section 7).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
